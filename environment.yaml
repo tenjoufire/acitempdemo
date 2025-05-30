@@ -2,7 +2,7 @@
 name: "ACI Development Environment"
 version: "1.0.0"
 description: "Azure Container Instances を使用した開発環境のカタログ"
-templatePath: ./templates/aci-simple/main.bicep
+templatePath: main.bicep
 
 parameters:
   - name: location
