@@ -1,3 +1,4 @@
+---
 # Azure Deployment Environment カタログ定義
 name: "ACI Development Environment"
 version: "1.0.0"
