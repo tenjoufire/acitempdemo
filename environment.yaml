@@ -1,16 +1,31 @@
----
 # Azure Deployment Environment カタログ定義
 name: "ACI Development Environment"
 version: "1.0.0"
 description: "Azure Container Instances を使用した開発環境のカタログ"
+templatePath: ./templates/aci-simple/main.bicep
 
-templates:
-  - name: "aci-simple"
-    path: "./templates/aci-simple"
-    description: "シンプルな Azure Container Instances デプロイメント"
-    supportedRegions:
-      - "japaneast"
-      - "japanwest"
-      - "eastus"
-      - "westus2"
-      - "westeurope"
+parameters:
+  - name: location
+    type: string
+    defaultValue: "eastus"
+    description: "リソースをデプロイする Azure リージョン"
+
+  - name: containerGroupName
+    type: string
+    defaultValue: "myContainerGroup"
+    description: "コンテナグループの名前"
+
+  - name: image
+    type: string
+    defaultValue: "mcr.microsoft.com/azuredocs/aci-helloworld"
+    description: "使用するコンテナイメージ"
+
+  - name: cpuCores
+    type: int
+    defaultValue: 1
+    description: "コンテナに割り当てる CPU コア数"
+
+  - name: memoryInGb
+    type: int
+    defaultValue: 1
+    description: "コンテナに割り当てるメモリ量 (GB)"
