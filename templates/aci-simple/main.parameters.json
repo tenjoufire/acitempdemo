@@ -1,0 +1,30 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "containerGroupName": {
+      "value": "aci-helloworld-demo"
+    },
+    "containerImage": {
+      "value": "mcr.microsoft.com/azuredocs/aci-helloworld:latest"
+    },
+    "cpuCores": {
+      "value": 1
+    },
+    "memoryInGb": {
+      "value": 1
+    },
+    "containerPort": {
+      "value": 80
+    },
+    "environmentName": {
+      "value": "development"
+    },
+    "ipAddressType": {
+      "value": "Public"
+    },
+    "dnsNameLabel": {
+      "value": "aci-helloworld-demo"
+    }
+  }
+}

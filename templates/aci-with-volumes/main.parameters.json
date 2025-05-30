@@ -1,0 +1,39 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "containerGroupName": {
+      "value": "aci-volumes-demo"
+    },
+    "containerImage": {
+      "value": "mcr.microsoft.com/azuredocs/aci-helloworld:latest"
+    },
+    "cpuCores": {
+      "value": 1
+    },
+    "memoryInGb": {
+      "value": 2
+    },
+    "containerPort": {
+      "value": 80
+    },
+    "environmentName": {
+      "value": "development"
+    },
+    "storageAccountName": {
+      "value": "acistoragedev001"
+    },
+    "fileShareName": {
+      "value": "acifiles"
+    },
+    "mountPath": {
+      "value": "/mnt/azurefiles"
+    },
+    "dnsNameLabel": {
+      "value": "aci-volumes-demo"
+    },
+    "enableHealthCheck": {
+      "value": true
+    }
+  }
+}

@@ -1,0 +1,113 @@
+# Azure Deployment Environment 環境定義
+# このファイルは Azure Deployment Environment での環境定義を行います
+
+apiVersion: v1
+kind: Environment
+metadata:
+  name: aci-development-environment
+  description: "Azure Container Instances を使用した開発環境"
+  version: "1.0.0"
+  tags:
+    - development
+    - container
+    - aci
+    - microservices
+
+spec:
+  # 環境の種類
+  environmentType: Development
+  
+  # 利用可能なリージョン
+  allowedRegions:
+    - japaneast
+    - japanwest
+    - eastus
+    - westus2
+    - westeurope
+  
+  # リソース制限
+  resourceLimits:
+    cpu: 4
+    memory: 8
+    storage: 100
+  
+  # 利用可能なテンプレート
+  templates:
+    - name: "aci-simple"
+      displayName: "シンプル Container Instance"
+      description: "基本的な Azure Container Instances のデプロイメント"
+      templatePath: "./templates/aci-simple/main.bicep"
+      parametersPath: "./templates/aci-simple/main.parameters.json"
+      category: "Container"
+      supportedEnvironments:
+        - development
+        - testing
+      estimatedCost: "Low"
+      deploymentTime: "2-5 minutes"
+      
+    - name: "aci-with-volumes"
+      displayName: "永続化ストレージ付き Container Instance"
+      description: "Azure Files ボリューム付きの Container Instances"
+      templatePath: "./templates/aci-with-volumes/main.bicep"
+      parametersPath: "./templates/aci-with-volumes/main.parameters.json"
+      category: "Container"
+      supportedEnvironments:
+        - development
+        - staging
+        - production
+      estimatedCost: "Medium"
+      deploymentTime: "5-10 minutes"
+
+  # 必要な権限
+  requiredPermissions:
+    - "Microsoft.ContainerInstance/containerGroups/read"
+    - "Microsoft.ContainerInstance/containerGroups/write"
+    - "Microsoft.ContainerInstance/containerGroups/delete"
+    - "Microsoft.Storage/storageAccounts/read"
+    - "Microsoft.Storage/storageAccounts/write"
+    - "Microsoft.Resources/deployments/read"
+    - "Microsoft.Resources/deployments/write"
+
+  # ガバナンス設定
+  governance:
+    # 自動削除設定
+    autoCleanup:
+      enabled: true
+      retentionDays: 7
+      
+    # 承認ワークフロー
+    approvalRequired: false
+    
+    # コスト制限
+    costLimit:
+      daily: 100
+      monthly: 1000
+      currency: "JPY"
+      
+    # タグ強制
+    requiredTags:
+      - Environment
+      - Owner
+      - Project
+      - CostCenter
+
+  # 統合設定
+  integrations:
+    # Azure DevOps
+    azureDevOps:
+      enabled: true
+      organization: "your-org"
+      project: "container-projects"
+      
+    # GitHub
+    github:
+      enabled: true
+      repository: "your-org/aci-catalog"
+      branch: "main"
+      
+    # 監視
+    monitoring:
+      enabled: true
+      logAnalytics: true
+      applicationInsights: true
+      alerts: true

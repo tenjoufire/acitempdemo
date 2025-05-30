@@ -1,0 +1,33 @@
+# Azure Deployment Environment カタログ定義
+name: "ACI Development Environment"
+version: "1.0.0"
+description: "Azure Container Instances を使用した開発環境のカタログ"
+
+templates:
+  - name: "aci-simple"
+    path: "./templates/aci-simple"
+    description: "シンプルな Azure Container Instances デプロイメント"
+    supportedRegions:
+      - "japaneast"
+      - "japanwest"
+      - "eastus"
+      - "westus2"
+      - "westeurope"
+    
+  - name: "aci-with-volumes"
+    path: "./templates/aci-with-volumes"
+    description: "Azure Files ボリュームマウント付きの Container Instances"
+    supportedRegions:
+      - "japaneast"
+      - "japanwest"
+      - "eastus"
+      - "westus2"
+      - "westeurope"
+
+metadata:
+  author: "Azure Team"
+  created: "2025-05-30"
+  tags:
+    - "container"
+    - "development"
+    - "aci"

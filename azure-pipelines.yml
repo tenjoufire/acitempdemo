@@ -1,0 +1,349 @@
+# Azure DevOps Pipeline for Azure Container Instances
+# このパイプラインは Bicep テンプレートの CI/CD を実現します
+
+trigger:
+  branches:
+    include:
+    - main
+    - develop
+  paths:
+    include:
+    - templates/*
+    - azure-pipelines.yml
+
+pr:
+  branches:
+    include:
+    - main
+  paths:
+    include:
+    - templates/*
+
+variables:
+  # Azure サービス接続名
+  azureSubscription: 'azure-service-connection'
+  
+  # リソースグループとロケーション
+  resourceGroupName: 'rg-aci-$(Build.SourceBranchName)'
+  location: 'Japan East'
+  
+  # テンプレート設定
+  templateType: 'aci-simple'
+  containerGroupName: 'aci-$(Build.SourceBranchName)-$(Build.BuildNumber)'
+
+stages:
+- stage: Validate
+  displayName: '🔍 Validate Templates'
+  jobs:
+  - job: ValidateBicep
+    displayName: 'Bicep Template Validation'
+    pool:
+      vmImage: 'ubuntu-latest'
+    
+    steps:
+    - task: AzureCLI@2
+      displayName: '🧪 Bicep Syntax Validation'
+      inputs:
+        azureSubscription: $(azureSubscription)
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          echo "🔍 Bicep テンプレートの構文チェックを実行中..."
+          
+          # Bicep CLI のインストール確認
+          az bicep version
+          
+          # シンプル ACI テンプレートの検証
+          echo "📋 aci-simple テンプレートを検証中..."
+          az bicep build --file ./templates/aci-simple/main.bicep
+          
+          # ボリューム付き ACI テンプレートの検証
+          echo "📋 aci-with-volumes テンプレートを検証中..."
+          az bicep build --file ./templates/aci-with-volumes/main.bicep
+          
+          echo "✅ すべてのテンプレートの構文チェックが完了しました"
+    
+    - task: AzureCLI@2
+      displayName: '🔮 What-If Analysis'
+      inputs:
+        azureSubscription: $(azureSubscription)
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          echo "🔮 What-If 分析を実行中..."
+          
+          # テスト用リソースグループの作成
+          TEST_RG="rg-aci-test-$(Build.BuildNumber)"
+          echo "📂 テスト用リソースグループを作成: $TEST_RG"
+          az group create --name "$TEST_RG" --location "$(location)"
+          
+          # シンプル ACI の What-If
+          echo "🔍 aci-simple の What-If 分析..."
+          az deployment group what-if \
+            --resource-group "$TEST_RG" \
+            --template-file ./templates/aci-simple/main.bicep \
+            --parameters ./templates/aci-simple/main.parameters.json \
+            --parameters containerGroupName="test-aci-simple"
+            
+          # ボリューム付き ACI の What-If
+          echo "🔍 aci-with-volumes の What-If 分析..."
+          az deployment group what-if \
+            --resource-group "$TEST_RG" \
+            --template-file ./templates/aci-with-volumes/main.bicep \
+            --parameters ./templates/aci-with-volumes/main.parameters.json \
+            --parameters containerGroupName="test-aci-volumes"
+            
+          # テスト用リソースグループの削除
+          echo "🧹 テスト用リソースグループを削除: $TEST_RG"
+          az group delete --name "$TEST_RG" --yes --no-wait
+    
+    - task: PublishBuildArtifacts@1
+      displayName: '📦 Publish Artifacts'
+      inputs:
+        PathtoPublish: '$(Build.SourcesDirectory)'
+        ArtifactName: 'bicep-templates'
+        publishLocation: 'Container'
+
+- stage: SecurityScan
+  displayName: '🔒 Security Scan'
+  dependsOn: Validate
+  jobs:
+  - job: SecurityCheck
+    displayName: 'Security and Quality Check'
+    pool:
+      vmImage: 'ubuntu-latest'
+    
+    steps:
+    - task: Bash@3
+      displayName: '🛡️ Security Scan'
+      inputs:
+        targetType: 'inline'
+        script: |
+          echo "🔍 セキュリティスキャンを実行中..."
+          
+          # 機密情報のハードコーディングチェック
+          echo "🔍 機密情報のハードコーディングをチェック中..."
+          if grep -r "password\|secret\|key" ./templates/ --include="*.bicep" --include="*.json"; then
+            echo "##vso[task.logissue type=error]⚠️ 機密情報がハードコーディングされている可能性があります"
+            exit 1
+          else
+            echo "✅ 機密情報のハードコーディングは検出されませんでした"
+          fi
+          
+          # パブリックアクセスのチェック
+          if grep -r "\"type\": \"Public\"" ./templates/ --include="*.bicep" --include="*.json"; then
+            echo "##vso[task.logissue type=warning]⚠️ パブリックアクセスが設定されています"
+          fi
+          
+          echo "✅ セキュリティスキャンが完了しました"
+
+- stage: DeployDev
+  displayName: '🚀 Deploy to Development'
+  dependsOn: 
+  - Validate
+  - SecurityScan
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/develop'))
+  jobs:
+  - deployment: DeployToDev
+    displayName: 'Deploy to Development Environment'
+    pool:
+      vmImage: 'ubuntu-latest'
+    environment: 'development'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - download: current
+            artifact: bicep-templates
+          
+          - task: AzureCLI@2
+            displayName: '📂 Create Resource Group'
+            inputs:
+              azureSubscription: $(azureSubscription)
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                RG_NAME="$(resourceGroupName)"
+                echo "📂 開発環境用リソースグループを作成: $RG_NAME"
+                az group create --name "$RG_NAME" --location "$(location)"
+          
+          - task: AzureResourceManagerTemplateDeployment@3
+            displayName: '🎯 Deploy Bicep Template'
+            inputs:
+              deploymentScope: 'Resource Group'
+              azureResourceManagerConnection: $(azureSubscription)
+              subscriptionId: '$(ARM_SUBSCRIPTION_ID)'
+              action: 'Create Or Update Resource Group'
+              resourceGroupName: '$(resourceGroupName)'
+              location: '$(location)'
+              templateLocation: 'Linked artifact'
+              csmFile: '$(Pipeline.Workspace)/bicep-templates/templates/$(templateType)/main.bicep'
+              csmParametersFile: '$(Pipeline.Workspace)/bicep-templates/templates/$(templateType)/main.parameters.json'
+              overrideParameters: '-containerGroupName $(containerGroupName) -environmentName development'
+              deploymentMode: 'Incremental'
+              deploymentName: 'aci-deployment-$(Build.BuildNumber)'
+          
+          - task: AzureCLI@2
+            displayName: '📊 Get Deployment Results'
+            inputs:
+              azureSubscription: $(azureSubscription)
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                echo "📊 デプロイ結果を取得中..."
+                
+                DEPLOYMENT_NAME="aci-deployment-$(Build.BuildNumber)"
+                RG_NAME="$(resourceGroupName)"
+                
+                # アウトプットの取得
+                FQDN=$(az deployment group show --resource-group "$RG_NAME" --name "$DEPLOYMENT_NAME" --query properties.outputs.fqdn.value -o tsv)
+                URL=$(az deployment group show --resource-group "$RG_NAME" --name "$DEPLOYMENT_NAME" --query properties.outputs.url.value -o tsv)
+                
+                echo "🌐 FQDN: $FQDN"
+                echo "🔗 URL: $URL"
+                
+                # パイプライン変数に設定
+                echo "##vso[task.setvariable variable=deploymentUrl]$URL"
+                echo "##vso[task.setvariable variable=deploymentFqdn]$FQDN"
+          
+          - task: Bash@3
+            displayName: '🧪 Test Deployment'
+            inputs:
+              targetType: 'inline'
+              script: |
+                echo "🧪 デプロイされたアプリケーションをテスト中..."
+                
+                # エンドポイントの疎通確認（最大5分間リトライ）
+                for i in {1..30}; do
+                  if curl -f "$(deploymentUrl)" > /dev/null 2>&1; then
+                    echo "✅ アプリケーションが正常に起動しました: $(deploymentUrl)"
+                    break
+                  else
+                    echo "⏳ アプリケーションの起動を待機中... ($i/30)"
+                    sleep 10
+                  fi
+                done
+
+- stage: DeployProd
+  displayName: '🏭 Deploy to Production'
+  dependsOn: 
+  - Validate
+  - SecurityScan
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'), eq(variables['Build.Reason'], 'Manual'))
+  jobs:
+  - deployment: DeployToProd
+    displayName: 'Deploy to Production Environment'
+    pool:
+      vmImage: 'ubuntu-latest'
+    environment: 'production'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - download: current
+            artifact: bicep-templates
+          
+          - task: AzureCLI@2
+            displayName: '📂 Ensure Production Resource Group'
+            inputs:
+              azureSubscription: $(azureSubscription)
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                PROD_RG="rg-aci-prod"
+                echo "📂 本番環境リソースグループを確認: $PROD_RG"
+                if ! az group show --name "$PROD_RG" > /dev/null 2>&1; then
+                  echo "📝 本番環境リソースグループを作成: $PROD_RG"
+                  az group create --name "$PROD_RG" --location "$(location)"
+                else
+                  echo "✅ 本番環境リソースグループが既に存在します"
+                fi
+                echo "##vso[task.setvariable variable=prodResourceGroup]$PROD_RG"
+          
+          - task: AzureCLI@2
+            displayName: '🔍 Production Pre-deployment Check'
+            inputs:
+              azureSubscription: $(azureSubscription)
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                echo "🔍 本番環境デプロイの What-If 分析..."
+                
+                az deployment group what-if \
+                  --resource-group "$(prodResourceGroup)" \
+                  --template-file "$(Pipeline.Workspace)/bicep-templates/templates/aci-with-volumes/main.bicep" \
+                  --parameters "$(Pipeline.Workspace)/bicep-templates/templates/aci-with-volumes/main.parameters.json" \
+                  --parameters containerGroupName="aci-prod" environmentName="production"
+          
+          - task: AzureResourceManagerTemplateDeployment@3
+            displayName: '🚀 Deploy to Production'
+            inputs:
+              deploymentScope: 'Resource Group'
+              azureResourceManagerConnection: $(azureSubscription)
+              subscriptionId: '$(ARM_SUBSCRIPTION_ID)'
+              action: 'Create Or Update Resource Group'
+              resourceGroupName: '$(prodResourceGroup)'
+              location: '$(location)'
+              templateLocation: 'Linked artifact'
+              csmFile: '$(Pipeline.Workspace)/bicep-templates/templates/aci-with-volumes/main.bicep'
+              csmParametersFile: '$(Pipeline.Workspace)/bicep-templates/templates/aci-with-volumes/main.parameters.json'
+              overrideParameters: '-containerGroupName aci-prod -environmentName production'
+              deploymentMode: 'Incremental'
+              deploymentName: 'aci-prod-deployment-$(Build.BuildNumber)'
+          
+          - task: AzureCLI@2
+            displayName: '📊 Production Deployment Results'
+            inputs:
+              azureSubscription: $(azureSubscription)
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                echo "📊 本番デプロイ結果を取得中..."
+                
+                DEPLOYMENT_NAME="aci-prod-deployment-$(Build.BuildNumber)"
+                
+                FQDN=$(az deployment group show --resource-group "$(prodResourceGroup)" --name "$DEPLOYMENT_NAME" --query properties.outputs.fqdn.value -o tsv)
+                URL=$(az deployment group show --resource-group "$(prodResourceGroup)" --name "$DEPLOYMENT_NAME" --query properties.outputs.url.value -o tsv)
+                
+                echo "🏭 本番環境 FQDN: $FQDN"
+                echo "🔗 本番環境 URL: $URL"
+
+- stage: Cleanup
+  displayName: '🧹 Cleanup Old Resources'
+  dependsOn: 
+  - DeployDev
+  condition: and(always(), eq(variables['Build.SourceBranch'], 'refs/heads/develop'))
+  jobs:
+  - job: CleanupOldResources
+    displayName: 'Clean up old development resources'
+    pool:
+      vmImage: 'ubuntu-latest'
+    
+    steps:
+    - task: AzureCLI@2
+      displayName: '🧹 Remove Old Resource Groups'
+      inputs:
+        azureSubscription: $(azureSubscription)
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          echo "🧹 7日以上古い開発環境リソースグループを削除中..."
+          
+          # 7日前の日付を計算
+          CUTOFF_DATE=$(date -d '7 days ago' +%Y-%m-%d)
+          echo "削除対象日付: $CUTOFF_DATE より古いリソースグループ"
+          
+          # 開発環境のリソースグループを検索して削除
+          az group list --query "[?starts_with(name, 'rg-aci-develop-')]" --output table
+          
+          az group list --query "[?starts_with(name, 'rg-aci-develop-')].[name]" -o tsv | while read rg_name; do
+            # リソースグループの作成日を取得（タグまたは作成時刻から）
+            CREATION_TIME=$(az group show --name "$rg_name" --query "properties.provisioningState" -o tsv)
+            
+            if [[ -n "$rg_name" ]]; then
+              echo "🗑️ 古いリソースグループを削除キューに追加: $rg_name"
+              az group delete --name "$rg_name" --yes --no-wait
+            fi
+          done
+          
+          echo "✅ クリーンアップが完了しました"
