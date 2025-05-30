@@ -57,10 +57,6 @@ stages:
           echo "📋 aci-simple テンプレートを検証中..."
           az bicep build --file ./templates/aci-simple/main.bicep
           
-          # ボリューム付き ACI テンプレートの検証
-          echo "📋 aci-with-volumes テンプレートを検証中..."
-          az bicep build --file ./templates/aci-with-volumes/main.bicep
-          
           echo "✅ すべてのテンプレートの構文チェックが完了しました"
     
     - task: AzureCLI@2
@@ -84,14 +80,6 @@ stages:
             --template-file ./templates/aci-simple/main.bicep \
             --parameters ./templates/aci-simple/main.parameters.json \
             --parameters containerGroupName="test-aci-simple"
-            
-          # ボリューム付き ACI の What-If
-          echo "🔍 aci-with-volumes の What-If 分析..."
-          az deployment group what-if \
-            --resource-group "$TEST_RG" \
-            --template-file ./templates/aci-with-volumes/main.bicep \
-            --parameters ./templates/aci-with-volumes/main.parameters.json \
-            --parameters containerGroupName="test-aci-volumes"
             
           # テスト用リソースグループの削除
           echo "🧹 テスト用リソースグループを削除: $TEST_RG"
@@ -271,8 +259,8 @@ stages:
                 
                 az deployment group what-if \
                   --resource-group "$(prodResourceGroup)" \
-                  --template-file "$(Pipeline.Workspace)/bicep-templates/templates/aci-with-volumes/main.bicep" \
-                  --parameters "$(Pipeline.Workspace)/bicep-templates/templates/aci-with-volumes/main.parameters.json" \
+                  --template-file "$(Pipeline.Workspace)/bicep-templates/templates/aci-simple/main.bicep" \
+                  --parameters "$(Pipeline.Workspace)/bicep-templates/templates/aci-simple/main.parameters.json" \
                   --parameters containerGroupName="aci-prod" environmentName="production"
           
           - task: AzureResourceManagerTemplateDeployment@3
@@ -285,8 +273,8 @@ stages:
               resourceGroupName: '$(prodResourceGroup)'
               location: '$(location)'
               templateLocation: 'Linked artifact'
-              csmFile: '$(Pipeline.Workspace)/bicep-templates/templates/aci-with-volumes/main.bicep'
-              csmParametersFile: '$(Pipeline.Workspace)/bicep-templates/templates/aci-with-volumes/main.parameters.json'
+              csmFile: '$(Pipeline.Workspace)/bicep-templates/templates/aci-simple/main.bicep'
+              csmParametersFile: '$(Pipeline.Workspace)/bicep-templates/templates/aci-simple/main.parameters.json'
               overrideParameters: '-containerGroupName aci-prod -environmentName production'
               deploymentMode: 'Incremental'
               deploymentName: 'aci-prod-deployment-$(Build.BuildNumber)'

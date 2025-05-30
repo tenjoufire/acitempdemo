@@ -44,27 +44,12 @@ spec:
         - testing
       estimatedCost: "Low"
       deploymentTime: "2-5 minutes"
-      
-    - name: "aci-with-volumes"
-      displayName: "永続化ストレージ付き Container Instance"
-      description: "Azure Files ボリューム付きの Container Instances"
-      templatePath: "./templates/aci-with-volumes/main.bicep"
-      parametersPath: "./templates/aci-with-volumes/main.parameters.json"
-      category: "Container"
-      supportedEnvironments:
-        - development
-        - staging
-        - production
-      estimatedCost: "Medium"
-      deploymentTime: "5-10 minutes"
 
   # 必要な権限
   requiredPermissions:
     - "Microsoft.ContainerInstance/containerGroups/read"
     - "Microsoft.ContainerInstance/containerGroups/write"
     - "Microsoft.ContainerInstance/containerGroups/delete"
-    - "Microsoft.Storage/storageAccounts/read"
-    - "Microsoft.Storage/storageAccounts/write"
     - "Microsoft.Resources/deployments/read"
     - "Microsoft.Resources/deployments/write"
 

@@ -1,22 +1,17 @@
 # Azure Container Instances Deployment Environment Catalog
 
-Azure Deployment Environment のための Azure Container Instances カタログです。開発者が簡単にコンテナ化されたアプリケーションをデプロイできるテンプレート集を提供します。
+Azure Deployment Environment のための Azure Container Instances カタログです。開発者が簡単にコンテナ化されたアプリケーションをデプロイできるシンプルなテンプレートを提供します。
 
 ## 📋 カタログ概要
 
 このカタログには以下のテンプレートが含まれています：
 
-### 1. シンプル ACI テンプレート (`aci-simple`)
+### シンプル ACI テンプレート (`aci-simple`)
 - 基本的な Azure Container Instances のデプロイメント
 - パブリック IP アドレスの自動割り当て
 - DNS 名の自動生成
 - 軽量なアプリケーション向け
-
-### 2. ボリューム付き ACI テンプレート (`aci-with-volumes`)
-- Azure Files を使用した永続化ストレージ
-- ヘルスチェック機能
-- リソース制限の設定
-- エンタープライズアプリケーション向け
+- プロトタイプや開発環境に最適
 
 ## 🏗️ アーキテクチャ
 
@@ -26,17 +21,11 @@ Azure Deployment Environment
 ├── Catalog (catalog.yaml)
 │
 ├── Templates
-│   ├── aci-simple/
-│   │   ├── main.bicep
-│   │   ├── main.parameters.json
-│   │   └── README.md
-│   │
-│   └── aci-with-volumes/
+│   └── aci-simple/
 │       ├── main.bicep
 │       ├── main.parameters.json
 │       └── README.md
 │
-├── azuredeploy.json (統合テンプレート)
 ├── deploy.sh (デプロイスクリプト)
 └── README.md
 ```
@@ -60,14 +49,7 @@ cd aci-catalog
 ./deploy.sh "rg-aci-demo" "japaneast" "aci-simple" "my-aci-app" "development"
 ```
 
-### 2. ボリューム付き ACI のデプロイ
-
-```bash
-# ボリューム付き ACI のデプロイ
-./deploy.sh "rg-aci-demo" "japaneast" "aci-with-volumes" "my-aci-app-volumes" "development"
-```
-
-### 3. Azure CLI での個別デプロイ
+### 2. Azure CLI での個別デプロイ
 
 ```bash
 # リソースグループの作成
@@ -80,25 +62,24 @@ az deployment group create \
   --parameters ./templates/aci-simple/main.parameters.json
 ```
 
-## 📊 テンプレート比較
+## 📊 テンプレート機能
 
-| 機能 | aci-simple | aci-with-volumes |
-|------|------------|------------------|
-| **基本機能** | | |
-| コンテナデプロイ | ✅ | ✅ |
-| パブリック IP | ✅ | ✅ |
-| DNS 名 | ✅ | ✅ |
-| 環境変数 | ✅ | ✅ |
-| **高度な機能** | | |
-| 永続化ストレージ | ❌ | ✅ |
-| ヘルスチェック | ❌ | ✅ |
-| リソース制限 | ❌ | ✅ |
-| 複数ボリューム | ❌ | ✅ |
-| **用途** | | |
-| プロトタイプ | ✅ | ✅ |
-| 開発環境 | ✅ | ✅ |
-| ステージング | ⚠️ | ✅ |
-| 本番環境 | ❌ | ⚠️ |
+### aci-simple テンプレート
+
+| 機能 | 対応状況 |
+|------|----------|
+| **基本機能** | |
+| コンテナデプロイ | ✅ |
+| パブリック IP | ✅ |
+| DNS 名 | ✅ |
+| 環境変数 | ✅ |
+| **用途** | |
+| プロトタイプ | ✅ |
+| 開発環境 | ✅ |
+| ステージング | ⚠️ |
+| 本番環境 | ❌ |
+
+このテンプレートは軽量なコンテナアプリケーションに最適で、素早く環境を立ち上げることができます。
 
 ## 🔧 カスタマイズ
 

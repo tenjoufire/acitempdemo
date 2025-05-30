@@ -35,6 +35,13 @@ SUBSCRIPTION=$(az account show --query name -o tsv)
 echo "✅ Azure サブスクリプション: $SUBSCRIPTION"
 echo ""
 
+# テンプレートタイプの検証
+if [ "$TEMPLATE_TYPE" != "aci-simple" ]; then
+    echo "❌ サポートされていないテンプレートタイプ: $TEMPLATE_TYPE"
+    echo "利用可能なテンプレート: aci-simple"
+    exit 1
+fi
+
 # リソースグループの作成または確認
 echo "📂 リソースグループを確認中..."
 if ! az group show --name "$RESOURCE_GROUP_NAME" > /dev/null 2>&1; then
