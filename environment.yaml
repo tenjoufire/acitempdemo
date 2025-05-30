@@ -3,7 +3,6 @@ name: "ACI Development Environment"
 version: "1.0.0"
 description: "Azure Container Instances を使用した開発環境のカタログ"
 templatePath: main.bicep
-
 parameters:
   - name: location
     type: string
@@ -29,3 +28,4 @@ parameters:
     type: int
     defaultValue: 1
     description: "コンテナに割り当てるメモリ量 (GB)"
+runner: Bicep
